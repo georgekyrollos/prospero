@@ -5,6 +5,8 @@
 import os, math, requests, torch, torch.nn as nn
 from prospero import TinyGPT
 import sentencepiece as spm
+from tqdm import tqdm
+
 
 # ---------------- config ----------------
 batch_size   = 64
@@ -13,7 +15,7 @@ n_embd       = 384
 n_head       = 6
 n_layer      = 6
 dropout      = 0.20
-max_iters    = 12000
+max_iters    = 15000
 eval_interval= 4000
 learning_rate= 3e-4
 eval_batches = 100
@@ -92,30 +94,43 @@ def estimate_loss():
     return out
 
 print(f"Device: {device}, vocab_size={vocab_size}, total_tokens={len(ids):,}")
-for step in range(1, max_iters+1):
-    x, y = get_batch("train")
-    _, loss = model(x, y)
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-    optimizer.step(); scheduler.step()
 
-    if step % eval_interval == 0:
-        est = estimate_loss()
-        print(f"step {step:5d} | train_loss {est['train']:.3f} | val_loss {est['val']:.3f}")
-        # quick sample & save
-        start = torch.zeros((1,1), dtype=torch.long, device=device)
-        sample_ids = model.generate(start, 300, temperature=0.9, top_k=50)[0].tolist()
-        print("\n---- SAMPLE ----\n" + decode(sample_ids) + "\n")
-        torch.save({
-            "state_dict": model.state_dict(),
-            "config": {
-                "vocab_size": vocab_size, "n_embd": n_embd, "n_head": n_head,
-                "n_layer": n_layer, "block_size": block_size, "dropout": dropout
-            },
-            "tokenizer": {"type": "sentencepiece", "model_file": sp_model},
-        }, ckpt_path)
-        print(f"[saved] {ckpt_path}")
+progress = tqdm(range(1, max_iters + 1), ncols=100, desc="training", unit="step")
+try:
+    for step in progress:
+        x, y = get_batch("train")
+        _, loss = model(x, y)
+
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step(); scheduler.step()
+
+        # live stats on the bar
+        lr_now = scheduler.get_last_lr()[0]
+        progress.set_postfix(loss=f"{loss.item():.3f}", lr=f"{lr_now:.2e}")
+
+        if step % eval_interval == 0:
+            # use tqdm.write so it doesn't break the bar line
+            est = estimate_loss()
+            tqdm.write(f"step {step:5d} | train_loss {est['train']:.3f} | val_loss {est['val']:.3f}")
+
+            # quick sample & save
+            start = torch.zeros((1,1), dtype=torch.long, device=device)
+            sample_ids = model.generate(start, 300, temperature=0.9, top_k=50)[0].tolist()
+            tqdm.write("\n---- SAMPLE ----\n" + decode(sample_ids) + "\n")
+
+            torch.save({
+                "state_dict": model.state_dict(),
+                "config": {
+                    "vocab_size": vocab_size, "n_embd": n_embd, "n_head": n_head,
+                    "n_layer": n_layer, "block_size": block_size, "dropout": dropout
+                },
+                "tokenizer": {"type": "sentencepiece", "model_file": sp_model},
+            }, ckpt_path)
+            tqdm.write(f"[saved] {ckpt_path}")
+finally:
+    progress.close()
 
 # final save
 torch.save({
