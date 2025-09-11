@@ -28,14 +28,14 @@ device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.i
 torch.manual_seed(1337)
 
 # -------------- data --------------------
-if not os.path.exists("input.txt"):
-    print("Downloading tiny Shakespeare...")
-    url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
-    txt = requests.get(url, timeout=30).text
-    with open("input.txt", "w", encoding="utf-8") as f:
-        f.write(txt)
-with open("input.txt", "r", encoding="utf-8") as f:
-    raw_text = f.read()
+# if not os.path.exists("input.txt"):
+#     print("Downloading tiny Shakespeare...")
+#     url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
+#     txt = requests.get(url, timeout=30).text
+#     with open("input.txt", "w", encoding="utf-8") as f:
+#         f.write(txt)
+# with open("input.txt", "r", encoding="utf-8") as f:
+#     raw_text = f.read()
 
 # -------------- tokenizer (SentencePiece) --------------
 
