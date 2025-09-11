@@ -8,7 +8,7 @@ import argparse, os, re, time, requests
 from pathlib import Path
 
 DEFAULT_TITLES = [
-    "Calculus","Linear algebra","Probability","Statistics","Optimization",
+    "Calculus","Probability","Statistics","Optimization",
     "Number theory","Group theory","Combinatorics","Graph theory","Topology",
     "Partial differential equation","Dynamical system",
     "Classical mechanics","Electromagnetism","Thermodynamics",
